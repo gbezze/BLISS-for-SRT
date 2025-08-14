@@ -293,7 +293,7 @@ A test has been done to see where the limits are, ananlyzing one of the SRT high
 
 From this plot the following empyrical law can be infered:
 
-$\dot{\nu}_\text{ range} \lesssim 9.2 \cdot 10^5 \ N_{fc}^{-1} \text{ Hz/s}$
+$ \dot{\nu}_\text{ range} \lesssim 9.2 \cdot 10^5 \ N_{fc}^{-1} \text{ Hz/s}$
 
 This result shouldn't really be interpreted in absolute values: when analyzing all data with $\dot{\nu}_\text{ range}<3.5 \text{ Hz/s}$ and $2^{20}$ fine channels BLISS would still run out of memory for some files. I haven't had the time to investigate this issue, and it's possible that this was due to other processes happening on the computer that used the GPU and occasionally it coincided with the peak BLISS memory usage. In any case, to avoid skipping files for whihch BLISS would run out of memory the data was analyzed with a ±2 Hz/s range, which with my limited trials (each one would take several hours) seems to be close to the upper limit of no file skipping.
 
