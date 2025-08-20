@@ -279,6 +279,23 @@ Then they are moved in the final lines of the pipeline from their initial path (
 
 >NOTE: for the GC targets the event search is done two times per cadence, one for the ON-first and OFF-first (supplying the additional argument `on_off_first='OFF'` to `find_event_pipeline`). Two .csv files are saved, denoted with 'A' (ON-first) and 'B' (OFF-first).
 
+## SETI results
+
+A total of 2023 H5 files have been analyzed, subdivided like this:
+* 1467 Galactic target observations
+  * 37 pointings fields (approximately 15 square arcsec)
+  * 21.8-24.5 GHz
+  
+* 556 Tess Input Catalog target observations
+  * 93 exoplanetary systems
+  * 18.1-18.4 GHz
+
+The initial BLISS analysis gave millions of hits, which were reduced to a few hundreds of cadences that passed filter 3. Of these, none passed further visual inspection: a faint signal was always present in the OFF scans. It was not detected possibly because it was below the SNR threshold.
+
+An example of a typical cadence that passed filter 3 is shown below:
+
+<img src=./guide_images/cadence.png width=400>
+
 
 # BLISS performance and findings
 
@@ -320,4 +337,70 @@ For all h5 files the hit search has also been repeated with `FindDoppler` from t
 The following things can be observed from these plots:
 
 * **BLISS finds many more hits than TurboSeti**, and generally at higher SNR. This may seem a good thing but there are some caveats.
-* **Many of the BLISS hits are artifacts**
+* **Many of the BLISS hits are artifacts** that do not correspond to a real narrowband signal.
+* **The hit distribution is asymmetric in the GC observations** having a significant number of high SNR hits (above 100) with positive drift rates that is not present for negative drift rates.
+* **BLISS and TurboSeti have similar spectral hits distribution**, except for some spikes at very specific frequencies.
+
+These observations have been investigated more in depth with additional plots.
+
+## The *ringing*
+
+The biggest difference between BLISS and TurboSeti are the clusters of hits present in periodic bands. This phenomenon, encountered previously with Greenbank observations, has been referred to as *ringing*.
+
+The period of the clusters coincides with the *unit drift rate* (frequency resolution / time resolution) which for the high-spectral resolution H5 files is 0.153 Hz/s. This points to the origin of this phenomenon, which is increased sensitivity in the region where two frequency "bins" overlap.
+
+The spectral distribution of ringing does not match perfectly the one of the total hits. By considering as an artifact every hit with an absolute drift rate higher than 0.5 Hs/s the following histogram can be made for GC observations:
+
+<img src=./guide_images/ringing_frequency.png width=400>
+
+In some frequency bands the ringing constitutes almost the total number of hits, while in others it makes up a relatively low percentage of the total. It's not immediately obvious but it appears that there is some periodicity also in this, but I'll come back to this aspect later.
+
+A test has been performed repeating the hit search with different SNR thresholds (5, 10 and 15) to see if it would remove the ringing. All the prodied hits are shown in the following scatter plot:
+
+<img src=./guide_images/SNR_DR_threshold.png width=400>
+
+From this plot it can be seen that a higher threshold helps to reduce ringing, but it cannot eliminate the high-SNR ones. Also, some artifacts that were not present with lower thresholds are created towards the bottom of the SNR distribution when the threshold is raised.
+
+To see what type of signals create the ringing it's not feasable to classify thousands of plots, so a random sample of 100 hits with $|\dot{\nu}| > 0.5 \text{Hz/s}$ have been chosen and the corresponding waterfall plots analyzed. The vast majority of signals falls into one of these two categories:
+
+* Narrowband signals with near-zero drift rate. In this cases the hit is also found at the correct drift rate but it gets "duplicated" at other (wrong) drift rates.
+  
+    <img src=./guide_images/ringing_1.png width=400>
+
+
+* Very wide band signals or very noisy part of the spectrum. In this case no narrowband signal is present to begin with.
+
+    <img src=./guide_images/ringing_2.png width=400>
+    
+    *(the detected hit is shown with a red dashed line)*
+
+The ringing is a problem for filter 2: if it happens on an ON scan, then most likely there are no signals on the subsequent OFF scans that match the ringing hit, so it's almost certain that the cadence passes filter 2.
+
+This also means that filter 3 very good at eliminating the ringing hits but makes visual inspection of filter 2 cadences impractical, since the overwhelming majority of them are constituted by ringing.
+
+## Asymmetric hits
+
+Contrary to the ringing, asymmetric hits are for the most part real signals. They appear both in TurboSeti and BLISS (altough the detected SNR is different).
+
+The signals are narrowband (unresolved) and sidebands are barely visible but present in some of them. They don't alternate in cadences (they appear in both ON and OFF) so they are not extraterrestrial in origin. An example is shown below:
+
+<img src=./guide_images/asymmetric.png width=400>
+
+They are distributed along the whole GC spectral observation range and lack any obvious pattern:
+
+<img src=./guide_images/asymmetric_frequency.png width=400>
+
+They are not present in the TIC targets, this could be due to two factors:
+
+* **Difference in frequency range of the observations:** the two sets of targets do not have overlapping frequencies so the source of this signals could emit above 22 GHz but not at 18 Ghz.
+* **Uneven directional distribution:** the galactic center is visible only at certain times of the day and ''traces'' a narrow slice of the sky troughout its journey on the celestial sphere along its aparent cycle around Polaris. On the other hand the TIC targets are distributed very isotropically around the celestial sphere. If, for example, satellite RFI has a positive drift rate around the GC direction it could explain these signals.
+
+## SNR-Frequency distribution of hits
+
+Shown below it's a scatter plot of the GC hits in the SNR-frequency plot, with the color of the point representing the absolute drift rate (black corresponds to near-zero).
+
+<img src=./guide_images/SNR_frequency.png width=400>
+
+One would expect it to be relatively uniform, however there are clear concentration of hits along arch-shaped features. These features repeat with a period that matches the frequency "blocks" in which the total observed range is divided between `blc00` and `blc01`. It's the same periodicity exhibited in the ringing contribution to the total hits that was metioned before.
+
+This pattern is traced by the black dots, which for the most part are not artifacts. In fact, it is present even when TurboSeti hits are used. This points to a varying degree of sensitivity along the frequency, related to the way frequencies are divided between `blc00` and `blc01`, creating inhomogeneities in the frequency response that are not compensated. Interestingly, the same plot done for the TIC targets does not show these features.
